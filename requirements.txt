@@ -2,4 +2,3 @@ matplotlib
 pandas
 streamlit
 numpy
-st-aggrid
