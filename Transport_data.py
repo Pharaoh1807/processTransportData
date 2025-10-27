@@ -36,13 +36,18 @@ if uploaded_file is not None:
         else:
             kg_month_2 = data[["Date", "Route", "Kg"]].copy()
             kg_month_2["Date"] = pd.to_datetime(kg_month_2["Date"], errors="coerce", dayfirst=True)
-            kg_month_2["Kg"] = pd.to_numeric(
-                kg_month_2["Kg"].astype(str).str.replace(",", "."),
-                errors="coerce"
-            )
-            kg_month_2.dropna(subset=["Date", "Kg"], inplace=True)
-
             
+
+            kg_month_2["Kg"] = (
+                kg_month_2["Kg"]
+                .astype(str)
+                .str.replace(r"[^\d\.,]", "", regex=True)   # bỏ ký tự lạ
+                .str.replace(",", "", regex=False)          # bỏ dấu phẩy ngăn cách nghìn
+            )
+
+            kg_month_2["Kg"] = pd.to_numeric(kg_month_2["Kg"], errors="coerce")
+
+            kg_month_2.dropna(subset=["Date", "Kg"], inplace=True)
 
             # ==========================
             # BIỂU ĐỒ 1: Volume by Month
@@ -95,6 +100,7 @@ if uploaded_file is not None:
             fig1.patch.set_alpha(0)
             ax1.patch.set_alpha(0)
             plt.tight_layout()
+            plt.xticks(rotation=45, ha='right')
             st.pyplot(fig1, use_container_width=False)
 
             # ==========================
