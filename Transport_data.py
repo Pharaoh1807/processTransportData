@@ -8,14 +8,25 @@ import matplotlib.ticker as ticker
 st.set_page_config(page_title="Production Analysis", layout="wide")
 st.title("📦 Production Analysis Dashboard")
 
-uploaded_file = st.file_uploader("📂 Upload your CSV file", type=["csv"])
+uploaded_file = st.file_uploader("📂 Upload your CSV file", type=["csv", "xlsx", "xls"])
 
 if uploaded_file is not None:
     try:
-       
-        data = pd.read_csv(uploaded_file, sep=",", on_bad_lines="skip")
-        st.success("✅ File uploaded successfully!")
+        if uploaded_file.name.endswith(".csv"):
+            data = pd.read_csv(uploaded_file, sep=",", on_bad_lines="skip")
+            st.success("✅ File uploaded successfully!")
+            
+        elif uploaded_file.name.endswith((".xlsx", ".xls")):
+            # Lấy danh sách sheet
+            xls = pd.ExcelFile(uploaded_file)
+            sheet_names = xls.sheet_names
 
+            # Hiển thị danh sách sheet để chọn
+            selected_sheet = st.selectbox("📑 Select a sheet to load:", sheet_names)
+
+            # Đọc sheet được chọn
+            data = pd.read_excel(uploaded_file, sheet_name=selected_sheet)
+            st.success(f"✅ Excel file loaded successfully! (Sheet: {selected_sheet})")
         
 
         # ==========================
