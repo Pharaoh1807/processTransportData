@@ -5,8 +5,8 @@ import matplotlib.ticker as ticker
 
 
 
-st.set_page_config(page_title="Production Analysis", layout="wide")
-st.title("📦 Production Analysis Dashboard")
+st.set_page_config(page_title="Logistics Analysis", layout="wide")
+st.title("🚚 Logistics Analysis Dashboard")
 
 uploaded_file = st.file_uploader("📂 Upload your data file", type=["csv", "xlsx", "xls"])
 
@@ -30,6 +30,16 @@ if uploaded_file is not None:
         
 
         # ==========================
+        # CHỌN CHẾ ĐỘ PHÂN TÍCH
+        # ==========================
+        st.subheader("Chọn chế độ phân tích")
+        mode = st.radio(
+            "Vui lòng chọn một mục:",
+            ["— Choose one —","Production Analytic", "Total Cost Analytic"],
+            horizontal=True
+        )
+
+          # ==========================
         # TABLE 1: SHOW THE DATA SET
         # ==========================
         st.subheader("📋 Dataset Preview")
@@ -37,16 +47,6 @@ if uploaded_file is not None:
         #Filter to show raw data
         if st.checkbox("Show Raw Dataset"):
            st.dataframe(data, use_container_width=True)
-
-        # ==========================
-        # CHỌN CHẾ ĐỘ PHÂN TÍCH
-        # ==========================
-        st.subheader("Chọn chế độ phân tích")
-        mode = st.radio(
-            "Vui lòng chọn một mục:",
-            ["Production Analytic", "Total Cost Analytic"],
-            horizontal=True
-        )
 
         # ==========================
         # CHUẨN HÓA DỮ LIỆU CHUNG
@@ -247,17 +247,12 @@ if uploaded_file is not None:
 
 
                 if price_file:
-                    supplier_name = st.text_input("✏️ Supplier name", value=price_file.name.split(".")[0])
-
-                    if st.button("➕ Add this price file"):
-                        try:
-                            # Load file
-                            if price_file.name.endswith(".csv"):
-                                price_df = pd.read_csv(price_file)
-                            else:
-                                xls = pd.ExcelFile(price_file)
-                                sheet = st.selectbox("📑 Select sheet", xls.sheet_names)
-                                price_df = pd.read_excel(price_file, sheet_name=sheet)
+                    try:
+                        supplier_name = st.text_input("✏️ Supplier name", value=price_file.name.split(".")[0])
+                        xls = pd.ExcelFile(price_file)
+                        sheet = st.selectbox("📑 Select sheet", xls.sheet_names)
+                        if st.button("➕ Add this price file"):
+                            price_df = pd.read_excel(price_file, sheet_name=sheet)
 
                             # Store in session
                             st.session_state["all_price_tables"].append(
@@ -268,8 +263,8 @@ if uploaded_file is not None:
                             if st.checkbox("Show Production data with OTKX"):
                                 st.dataframe(price_df, use_container_width=True)
 
-                        except Exception as e:
-                            st.error(f"⚠️ Error: {e}")
+                    except Exception as e:
+                        st.error(f"⚠️ Error: {e}")
 
                 # ============================================================
                 # SHOW ALL PRICE TABLES ALREADY LOADED
@@ -298,10 +293,18 @@ if uploaded_file is not None:
                         elif kg <= 20000: return "OTKX20"
                         else: return "OTKX45"
 
-                    kg_month["OTKX"] = kg_month["Kg"].apply(get_otkx)
-                    if st.checkbox("Show Production data with OTKX"):
-                        st.subheader("📦 Production data with OTKX")
-                        st.dataframe(kg_month, use_container_width=True)
+                    daily_route = (
+                        kg_month.groupby(["Route", kg_month["Date"].dt.date])["Kg"]
+                        .sum()
+                        .reset_index()
+                        .rename(columns={"Date": "Day"})
+                    )
+
+                    daily_route["OTKX"] = daily_route["Kg"].apply(get_otkx)
+                    
+                    if st.checkbox("Show Production data by Route per Day with OTKX"):
+                        st.subheader("📦 Production data by Route")
+                        st.dataframe(daily_route, use_container_width=True)
 
                     # ============================================================
                     # TÍNH CHI PHÍ CHO TỪNG NVC
@@ -321,7 +324,7 @@ if uploaded_file is not None:
                                 continue
 
                             merged = pd.merge(
-                                kg_month,
+                                daily_route,
                                 price_df,
                                 left_on="Route",
                                 right_on="TUYẾN",
@@ -398,7 +401,7 @@ if uploaded_file is not None:
                             for r in final_results:
                                 st.write(f"### 🚚 {r['Supplier']}")
                                 st.dataframe(
-                                    r["Detail"][["Date", "Route", "Kg", "OTKX", "UnitPrice", "TotalCost"]],
+                                    r["Detail"][["Day", "Route", "Kg", "OTKX", "UnitPrice", "TotalCost"]],
                                     use_container_width=False
                                 )
                         
